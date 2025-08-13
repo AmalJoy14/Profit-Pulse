@@ -17,6 +17,7 @@ function Transactions() {
     quantity: "",
     transactionDate: "",
     customerName: "",
+    customerEmail: "",
     amountPaid: "",
   })
   const [loading, setLoading] = useState(false)
@@ -121,6 +122,7 @@ function Transactions() {
         transactionDate: new Date(formData.transactionDate),
         stockId: selectedStock.id,
         customerName: formData.customerName,
+        customerEmail: formData.customerEmail,
         totalAmount,
         amountPaid,
         dueAmount,
@@ -133,6 +135,7 @@ function Transactions() {
         await addDoc(collection(db, "dues"), {
           userId: user.uid,
           customerName: formData.customerName,
+          customerEmail: formData.customerEmail,
           amount: dueAmount,
           description: `Sale of ${quantity} ${formData.itemName}`,
           dueDate: new Date(formData.transactionDate),
@@ -153,6 +156,7 @@ function Transactions() {
         quantity: "",
         transactionDate: "",
         customerName: "",
+        customerEmail: "",
         amountPaid: "",
       })
       setSelectedStock(null)
@@ -198,6 +202,18 @@ function Transactions() {
                 value={formData.customerName}
                 onChange={handleInputChange}
                 placeholder="Enter customer name"
+                required
+              />
+            </div>
+            <div className={styles.inputGroup}>
+              <label htmlFor="customerEmail">Customer Email</label>
+              <input
+                type="email"
+                id="customerEmail"
+                name="customerEmail"
+                value={formData.customerEmail}
+                onChange={handleInputChange}
+                placeholder="Enter customer email"
                 required
               />
             </div>

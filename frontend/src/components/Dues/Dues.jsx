@@ -32,11 +32,11 @@ function Dues() {
       })
 
       const groupedDues = duesData.reduce((acc, due) => {
-        const customerName = due.customerName
-        if (!acc[customerName]) {
-          acc[customerName] = []
+        const customerKey = due.customerEmail || due.customerName || "Unknown"
+        if (!acc[customerKey]) {
+          acc[customerKey] = []
         }
-        acc[customerName].push(due)
+        acc[customerKey].push(due)
         return acc
       }, {})
 
@@ -133,13 +133,14 @@ function Dues() {
         {Object.keys(dues).length === 0 ? (
           <p className={styles.noDues}>No pending dues.</p>
         ) : (
-          Object.entries(dues).map(([customerName, customerDues]) => {
+          Object.entries(dues).map(([customerKey, customerDues]) => {
             const totalCustomerDue = customerDues.reduce((sum, due) => sum + (due.remainingAmount || due.amount), 0)
-
+            // Find a representative due for name/email display
+            const repDue = customerDues[0] || {}
             return (
-              <div key={customerName} className={styles.customerSection}>
+              <div key={customerKey} className={styles.customerSection}>
                 <h2 className={styles.customerName}>
-                  {customerName} - ${totalCustomerDue.toFixed(2)}
+                  {repDue.customerName || "Unknown"} <span style={{fontWeight:400, fontSize:'0.9em'}}>({repDue.customerEmail || customerKey})</span> - ${totalCustomerDue.toFixed(2)}
                 </h2>
 
                 {customerDues.map((due) => {
