@@ -10,6 +10,7 @@ function Transactions() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState([])
   const [stockItems, setStockItems] = useState([])
+  const [searchTerm, setSearchTerm] = useState("") // Added search state for filtering transactions by customer name
   const [formData, setFormData] = useState({
     itemName: "",
     sellingPrice: "",
@@ -176,6 +177,10 @@ function Transactions() {
       ? Number.parseFloat(formData.sellingPrice) * Number.parseInt(formData.quantity)
       : 0
 
+  const filteredTransactions = transactions.filter((transaction) =>
+    transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()),
+  ) // Added function to filter transactions by customer name
+
   return (
     <div className={styles.container}>
       <h1 className={styles.title}>Sales Transactions</h1>
@@ -307,12 +312,26 @@ function Transactions() {
       </div>
 
       <div className={styles.transactionsList}>
-        <h2>Recent Sales</h2>
-        {transactions.length === 0 ? (
-          <p className={styles.noTransactions}>No sales recorded yet.</p>
+        <div className={styles.sectionHeader}>
+          <h2>Recent Sales</h2>
+          <div className={styles.searchContainer}>
+            <input
+              type="text"
+              placeholder="Search by customer name..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className={styles.searchInput}
+            />
+          </div>
+        </div>
+
+        {filteredTransactions.length === 0 ? (
+          <p className={styles.noTransactions}>
+            {searchTerm ? `No sales found for "${searchTerm}"` : "No sales recorded yet."}
+          </p>
         ) : (
           <div className={styles.transactionsGrid}>
-            {transactions.map((transaction) => (
+            {filteredTransactions.map((transaction) => (
               <div key={transaction.id} className={styles.transactionCard}>
                 <h3>{transaction.itemName}</h3>
                 <div className={styles.customerInfo}>
