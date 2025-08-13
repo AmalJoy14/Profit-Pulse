@@ -7,6 +7,7 @@ import Dashboard from "./components/Dashboard/Dashboard"
 import Transactions from "./components/Transactions/Transactions"
 import Stock from "./components/Stock/Stock"
 import Navigation from "./components/Navigation/Navigation"
+import Dues from "./components/Dues/Dues"
 import styles from "./App.module.css"
 
 function AppContent() {
@@ -25,6 +26,7 @@ function AppContent() {
           <Route path="/dashboard" element={user ? <Dashboard /> : <Navigate to="/login" />} />
           <Route path="/transactions" element={user ? <Transactions /> : <Navigate to="/login" />} />
           <Route path="/stock" element={user ? <Stock /> : <Navigate to="/login" />} />
+          <Route path="/dues" element={user ? <Dues /> : <Navigate to="/login" />} />
           <Route path="/" element={<Navigate to={user ? "/dashboard" : "/login"} />} />
         </Routes>
       </main>

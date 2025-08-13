@@ -35,6 +35,9 @@ function Navigation() {
           <Link to="/stock" className={`${styles.link} ${location.pathname === "/stock" ? styles.active : ""}`}>
             Stock
           </Link>
+          <Link to="/dues" className={`${styles.link} ${location.pathname === "/dues" ? styles.active : ""}`}>
+            Dues
+          </Link>
           <button onClick={handleLogout} className={styles.logoutButton}>
             Logout
           </button>

@@ -14,6 +14,8 @@ function Dashboard() {
     lossDeals: 0,
     nearExpiryItems: 0,
     expiredItems: 0,
+    totalPendingDues: 0,
+    overdueDues: 0,
   })
   const [loading, setLoading] = useState(true)
 
@@ -25,9 +27,11 @@ function Dashboard() {
 
   const fetchStats = async () => {
     try {
-      const q = query(collection(db, "transactions"), where("userId", "==", user.uid))
+      const transactionsQuery = query(collection(db, "transactions"), where("userId", "==", user.uid))
+      const duesQuery = query(collection(db, "dues"), where("userId", "==", user.uid))
 
-      const querySnapshot = await getDocs(q)
+      const [transactionsSnapshot, duesSnapshot] = await Promise.all([getDocs(transactionsQuery), getDocs(duesQuery)])
+
       let totalProfit = 0
       let profitableDeals = 0
       let lossDeals = 0
@@ -37,7 +41,7 @@ function Dashboard() {
       const now = new Date()
       const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
-      querySnapshot.forEach((doc) => {
+      transactionsSnapshot.forEach((doc) => {
         const data = doc.data()
         const profit = data.profit || 0
 
@@ -59,12 +63,28 @@ function Dashboard() {
         }
       })
 
+      let totalPendingDues = 0
+      let overdueDues = 0
+
+      duesSnapshot.forEach((doc) => {
+        const data = doc.data()
+        if (data.status === "pending") {
+          totalPendingDues += data.amount || 0
+
+          if (data.dueDate && data.dueDate.toDate() < now) {
+            overdueDues++
+          }
+        }
+      })
+
       setStats({
         totalProfit,
         profitableDeals,
         lossDeals,
         nearExpiryItems,
         expiredItems,
+        totalPendingDues,
+        overdueDues,
       })
     } catch (error) {
       console.error("Error fetching stats:", error)
@@ -95,6 +115,16 @@ function Dashboard() {
         <div className={styles.statCard}>
           <h3>Loss Deals</h3>
           <p className={styles.loss}>{stats.lossDeals}</p>
+        </div>
+
+        <div className={styles.statCard}>
+          <h3>Pending Dues</h3>
+          <p className={styles.warning}>${stats.totalPendingDues.toFixed(2)}</p>
+        </div>
+
+        <div className={styles.statCard}>
+          <h3>Overdue Payments</h3>
+          <p className={styles.loss}>{stats.overdueDues}</p>
         </div>
 
         <div className={styles.statCard}>
