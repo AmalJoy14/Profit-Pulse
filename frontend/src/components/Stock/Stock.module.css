@@ -18,11 +18,15 @@
 
 .searchContainer {
   margin-bottom: 30px;
+  display: flex;
+  gap: 15px;
+  align-items: center;
+  flex-wrap: wrap;
 }
 
 .searchInput {
-  width: 100%;
-  max-width: 400px;
+  flex: 1;
+  min-width: 300px;
   padding: 12px 16px;
   border: 1px solid #d1d5db;
   border-radius: 8px;
@@ -33,6 +37,96 @@
   outline: none;
   border-color: #2563eb;
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+/* Added add inventory button styles */
+.addInventoryBtn {
+  padding: 12px 16px;
+  background: #10b981;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.addInventoryBtn:hover {
+  background: #059669;
+}
+
+.removeExpiredBtn {
+  padding: 12px 16px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.removeExpiredBtn:hover:not(:disabled) {
+  background: #dc2626;
+}
+
+.removeExpiredBtn:disabled {
+  background: #9ca3af;
+  cursor: not-allowed;
+}
+
+/* Added inventory form styles */
+.addForm {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  margin-bottom: 30px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border: 1px solid #e5e7eb;
+}
+
+.addForm h3 {
+  margin: 0 0 20px 0;
+  color: #333;
+  font-size: 20px;
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 15px;
+  margin-bottom: 20px;
+}
+
+.formGrid input {
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.formGrid input:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.submitBtn {
+  padding: 12px 24px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  font-size: 16px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.submitBtn:hover {
+  background: #1d4ed8;
 }
 
 .noItems {
@@ -76,10 +170,25 @@
   font-size: 18px;
 }
 
+/* Added type badge styles */
+.typeBadge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 11px;
+  font-weight: 600;
+  text-transform: uppercase;
+  background: #e5e7eb;
+  color: #374151;
+}
+
 .stockDetails {
   display: flex;
   flex-direction: column;
   gap: 8px;
+  margin-bottom: 15px;
 }
 
 .stockDetails p {
@@ -93,9 +202,49 @@
   color: #333 !important;
 }
 
+.stockActions {
+  display: flex;
+  gap: 10px;
+  margin-top: 15px;
+}
+
+.updateBtn {
+  flex: 1;
+  padding: 8px 12px;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.updateBtn:hover {
+  background: #1d4ed8;
+}
+
+.deleteBtn {
+  flex: 1;
+  padding: 8px 12px;
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+}
+
+.deleteBtn:hover {
+  background: #dc2626;
+}
+
 .statusBadge {
   position: absolute;
-  top: 15px;
+  top: 45px;
   right: 15px;
   padding: 4px 8px;
   border-radius: 4px;
@@ -129,6 +278,20 @@
     margin-bottom: 20px;
   }
 
+  .searchContainer {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .searchInput {
+    min-width: auto;
+  }
+
+  /* Added mobile styles for form */
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
   .stockGrid {
     grid-template-columns: 1fr;
     gap: 15px;
@@ -136,5 +299,15 @@
 
   .stockCard {
     padding: 15px;
+  }
+
+  .stockActions {
+    gap: 8px;
+  }
+
+  .updateBtn,
+  .deleteBtn {
+    padding: 10px 12px;
+    font-size: 13px;
   }
 }
