@@ -1,0 +1,140 @@
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+  padding: 20px;
+}
+
+.title {
+  font-size: 32px;
+  margin-bottom: 30px;
+  color: #333;
+}
+
+.loading {
+  text-align: center;
+  padding: 40px;
+  font-size: 18px;
+}
+
+.searchContainer {
+  margin-bottom: 30px;
+}
+
+.searchInput {
+  width: 100%;
+  max-width: 400px;
+  padding: 12px 16px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
+  font-size: 16px;
+}
+
+.searchInput:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.noItems {
+  text-align: center;
+  color: #666;
+  font-style: italic;
+  padding: 40px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+}
+
+.stockGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: 20px;
+}
+
+.stockCard {
+  background: white;
+  border-radius: 8px;
+  padding: 20px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-left: 4px solid #10b981;
+  position: relative;
+}
+
+.stockCard.nearExpiry {
+  border-left-color: #f59e0b;
+  background: #fffbeb;
+}
+
+.stockCard.expired {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.stockCard h3 {
+  margin-bottom: 15px;
+  color: #333;
+  font-size: 18px;
+}
+
+.stockDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.stockDetails p {
+  margin: 0;
+  font-size: 14px;
+  color: #666;
+}
+
+.expiryDate {
+  font-weight: 600;
+  color: #333 !important;
+}
+
+.statusBadge {
+  position: absolute;
+  top: 15px;
+  right: 15px;
+  padding: 4px 8px;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  text-transform: uppercase;
+}
+
+.good .statusBadge {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.nearExpiry .statusBadge {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.expired .statusBadge {
+  background: #fecaca;
+  color: #991b1b;
+}
+
+@media (max-width: 768px) {
+  .container {
+    padding: 15px;
+  }
+
+  .title {
+    font-size: 28px;
+    margin-bottom: 20px;
+  }
+
+  .stockGrid {
+    grid-template-columns: 1fr;
+    gap: 15px;
+  }
+
+  .stockCard {
+    padding: 15px;
+  }
+}
