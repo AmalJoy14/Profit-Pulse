@@ -15,6 +15,8 @@ function Transactions() {
     sellingPrice: "",
     quantity: "",
     transactionDate: "",
+    customerName: "",
+    amountPaid: "",
   })
   const [loading, setLoading] = useState(false)
   const [selectedStock, setSelectedStock] = useState(null)
@@ -89,6 +91,7 @@ function Transactions() {
 
       const quantity = Number.parseInt(formData.quantity)
       const sellingPrice = Number.parseFloat(formData.sellingPrice)
+      const amountPaid = Number.parseFloat(formData.amountPaid)
 
       if (quantity > selectedStock.quantity) {
         alert(`Not enough stock! Available: ${selectedStock.quantity}, Requested: ${quantity}`)
@@ -98,6 +101,14 @@ function Transactions() {
 
       const costPrice = selectedStock.costPrice
       const profit = (sellingPrice - costPrice) * quantity
+      const totalAmount = sellingPrice * quantity
+      const dueAmount = totalAmount - amountPaid
+
+      if (amountPaid > totalAmount) {
+        alert("Amount paid cannot be more than total amount")
+        setLoading(false)
+        return
+      }
 
       const transactionData = {
         userId: user.uid,
@@ -108,9 +119,27 @@ function Transactions() {
         profit,
         transactionDate: new Date(formData.transactionDate),
         stockId: selectedStock.id,
+        customerName: formData.customerName,
+        totalAmount,
+        amountPaid,
+        dueAmount,
+        paymentStatus: dueAmount > 0 ? "partial" : "paid",
       }
 
       await addDoc(collection(db, "transactions"), transactionData)
+
+      if (dueAmount > 0) {
+        await addDoc(collection(db, "dues"), {
+          userId: user.uid,
+          customerName: formData.customerName,
+          amount: dueAmount,
+          description: `Sale of ${quantity} ${formData.itemName}`,
+          dueDate: new Date(formData.transactionDate),
+          createdAt: new Date(),
+          status: "pending",
+          transactionId: null,
+        })
+      }
 
       const newStockQuantity = selectedStock.quantity - quantity
       await updateDoc(doc(db, "stock", selectedStock.id), {
@@ -122,12 +151,18 @@ function Transactions() {
         sellingPrice: "",
         quantity: "",
         transactionDate: "",
+        customerName: "",
+        amountPaid: "",
       })
       setSelectedStock(null)
 
       await fetchTransactions()
       await fetchStockItems()
-      alert("Transaction recorded successfully!")
+      alert(
+        dueAmount > 0
+          ? `Transaction recorded! Due amount of $${dueAmount.toFixed(2)} added to dues.`
+          : "Transaction recorded successfully!",
+      )
     } catch (error) {
       console.error("Error adding transaction:", error)
       alert("Error recording transaction")
@@ -135,6 +170,11 @@ function Transactions() {
       setLoading(false)
     }
   }
+
+  const totalAmount =
+    selectedStock && formData.sellingPrice && formData.quantity
+      ? Number.parseFloat(formData.sellingPrice) * Number.parseInt(formData.quantity)
+      : 0
 
   return (
     <div className={styles.container}>
@@ -144,6 +184,19 @@ function Transactions() {
         <h2>Record New Sale</h2>
         <form onSubmit={handleSubmit} className={styles.form}>
           <div className={styles.formRow}>
+            <div className={styles.inputGroup}>
+              <label htmlFor="customerName">Customer Name</label>
+              <input
+                type="text"
+                id="customerName"
+                name="customerName"
+                value={formData.customerName}
+                onChange={handleInputChange}
+                placeholder="Enter customer name"
+                required
+              />
+            </div>
+
             <div className={styles.inputGroup}>
               <label htmlFor="itemName">Select Item from Stock</label>
               <select id="itemName" name="itemName" value={formData.itemName} onChange={handleInputChange} required>
@@ -155,7 +208,9 @@ function Transactions() {
                 ))}
               </select>
             </div>
+          </div>
 
+          <div className={styles.formRow}>
             <div className={styles.inputGroup}>
               <label htmlFor="quantity">Quantity to Sell</label>
               <input
@@ -174,9 +229,7 @@ function Transactions() {
                 </small>
               )}
             </div>
-          </div>
 
-          <div className={styles.formRow}>
             <div className={styles.inputGroup}>
               <label htmlFor="sellingPrice">Selling Price per Unit ($)</label>
               <input
@@ -189,30 +242,63 @@ function Transactions() {
                 min="0"
                 required
               />
-              {selectedStock && formData.sellingPrice && formData.quantity && (
-                <small className={styles.profitInfo}>
-                  Profit per unit: ${(Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice).toFixed(2)} |
-                  Total profit: $
-                  {(
-                    (Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice) *
-                    Number.parseInt(formData.quantity || 0)
-                  ).toFixed(2)}
-                </small>
-              )}
-            </div>
-
-            <div className={styles.inputGroup}>
-              <label htmlFor="transactionDate">Sale Date</label>
-              <input
-                type="date"
-                id="transactionDate"
-                name="transactionDate"
-                value={formData.transactionDate}
-                onChange={handleInputChange}
-                required
-              />
             </div>
           </div>
+
+          {totalAmount > 0 && (
+            <div className={styles.paymentSection}>
+              <div className={styles.totalAmount}>
+                <h3>Total Amount: ${totalAmount.toFixed(2)}</h3>
+              </div>
+
+              <div className={styles.formRow}>
+                <div className={styles.inputGroup}>
+                  <label htmlFor="amountPaid">Amount Paid ($)</label>
+                  <input
+                    type="number"
+                    id="amountPaid"
+                    name="amountPaid"
+                    value={formData.amountPaid}
+                    onChange={handleInputChange}
+                    step="0.01"
+                    min="0"
+                    max={totalAmount}
+                    required
+                  />
+                  {formData.amountPaid && (
+                    <small className={styles.dueInfo}>
+                      Due Amount: ${(totalAmount - Number.parseFloat(formData.amountPaid || 0)).toFixed(2)}
+                    </small>
+                  )}
+                </div>
+
+                <div className={styles.inputGroup}>
+                  <label htmlFor="transactionDate">Sale Date</label>
+                  <input
+                    type="date"
+                    id="transactionDate"
+                    name="transactionDate"
+                    value={formData.transactionDate}
+                    onChange={handleInputChange}
+                    required
+                  />
+                </div>
+              </div>
+            </div>
+          )}
+
+          {selectedStock && formData.sellingPrice && formData.quantity && (
+            <div className={styles.profitInfo}>
+              <small>
+                Profit per unit: ${(Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice).toFixed(2)} |
+                Total profit: $
+                {(
+                  (Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice) *
+                  Number.parseInt(formData.quantity || 0)
+                ).toFixed(2)}
+              </small>
+            </div>
+          )}
 
           <button type="submit" disabled={loading || !selectedStock} className={styles.submitButton}>
             {loading ? "Recording..." : "Record Sale"}
@@ -229,14 +315,37 @@ function Transactions() {
             {transactions.map((transaction) => (
               <div key={transaction.id} className={styles.transactionCard}>
                 <h3>{transaction.itemName}</h3>
+                <div className={styles.customerInfo}>
+                  <p>
+                    <strong>Customer:</strong> {transaction.customerName}
+                  </p>
+                </div>
                 <div className={styles.transactionDetails}>
                   <p>Quantity Sold: {transaction.quantity}</p>
-                  <p>Cost per Unit: ${transaction.costPrice.toFixed(2)}</p>
-                  <p>Selling Price: ${transaction.sellingPrice.toFixed(2)}</p>
+                  <p>Selling Price: ${transaction.sellingPrice.toFixed(2)} each</p>
+                  <p>
+                    <strong>
+                      Total Amount: $
+                      {transaction.totalAmount?.toFixed(2) ||
+                        (transaction.sellingPrice * transaction.quantity).toFixed(2)}
+                    </strong>
+                  </p>
+                  <p>
+                    Amount Paid: $
+                    {transaction.amountPaid?.toFixed(2) ||
+                      transaction.totalAmount?.toFixed(2) ||
+                      (transaction.sellingPrice * transaction.quantity).toFixed(2)}
+                  </p>
+                  {transaction.dueAmount > 0 && (
+                    <p className={styles.dueAmount}>Due: ${transaction.dueAmount.toFixed(2)}</p>
+                  )}
                   <p className={transaction.profit >= 0 ? styles.profit : styles.loss}>
                     Total Profit: ${transaction.profit.toFixed(2)}
                   </p>
                   <p>Sale Date: {transaction.transactionDate.toDate().toLocaleDateString()}</p>
+                  <p className={styles.paymentStatus}>
+                    Payment: {transaction.paymentStatus === "paid" ? "✅ Paid" : "⏳ Partial"}
+                  </p>
                 </div>
               </div>
             ))}

@@ -6,8 +6,8 @@ import Login from "./components/Login/Login"
 import Dashboard from "./components/Dashboard/Dashboard"
 import Transactions from "./components/Transactions/Transactions"
 import Stock from "./components/Stock/Stock"
-import Navigation from "./components/Navigation/Navigation"
 import Dues from "./components/Dues/Dues"
+import Navigation from "./components/Navigation/Navigation"
 import styles from "./App.module.css"
 
 function AppContent() {

@@ -1,7 +1,7 @@
 "use client"
 
 import { useState, useEffect } from "react"
-import { collection, addDoc, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore"
+import { collection, query, where, getDocs, doc, updateDoc, deleteDoc } from "firebase/firestore"
 import { db } from "../../firebase/config"
 import { useAuth } from "../../contexts/AuthContext"
 import styles from "./Dues.module.css"
@@ -10,13 +10,7 @@ function Dues() {
   const { user } = useAuth()
   const [dues, setDues] = useState([])
   const [loading, setLoading] = useState(true)
-  const [showForm, setShowForm] = useState(false)
-  const [formData, setFormData] = useState({
-    customerName: "",
-    amount: "",
-    description: "",
-    dueDate: "",
-  })
+  const [paymentAmount, setPaymentAmount] = useState({})
 
   useEffect(() => {
     if (user) {
@@ -26,7 +20,7 @@ function Dues() {
 
   const fetchDues = async () => {
     try {
-      const q = query(collection(db, "dues"), where("userId", "==", user.uid))
+      const q = query(collection(db, "dues"), where("userId", "==", user.uid), where("status", "==", "pending"))
       const querySnapshot = await getDocs(q)
       const duesData = []
 
@@ -37,7 +31,16 @@ function Dues() {
         })
       })
 
-      setDues(duesData)
+      const groupedDues = duesData.reduce((acc, due) => {
+        const customerName = due.customerName
+        if (!acc[customerName]) {
+          acc[customerName] = []
+        }
+        acc[customerName].push(due)
+        return acc
+      }, {})
+
+      setDues(groupedDues)
     } catch (error) {
       console.error("Error fetching dues:", error)
     } finally {
@@ -45,28 +48,35 @@ function Dues() {
     }
   }
 
-  const handleSubmit = async (e) => {
-    e.preventDefault()
-    try {
-      await addDoc(collection(db, "dues"), {
-        ...formData,
-        amount: Number.parseFloat(formData.amount),
-        dueDate: new Date(formData.dueDate),
-        userId: user.uid,
-        createdAt: new Date(),
-        status: "pending",
-      })
+  const handlePartialPayment = async (dueId, currentAmount) => {
+    const paymentAmountValue = Number.parseFloat(paymentAmount[dueId] || 0)
 
-      setFormData({
-        customerName: "",
-        amount: "",
-        description: "",
-        dueDate: "",
-      })
-      setShowForm(false)
+    if (paymentAmountValue <= 0 || paymentAmountValue > currentAmount) {
+      alert("Please enter a valid payment amount")
+      return
+    }
+
+    try {
+      const newAmount = currentAmount - paymentAmountValue
+
+      if (newAmount <= 0) {
+        await updateDoc(doc(db, "dues", dueId), {
+          status: "paid",
+          paidAt: new Date(),
+          remainingAmount: 0,
+        })
+      } else {
+        await updateDoc(doc(db, "dues", dueId), {
+          remainingAmount: newAmount,
+          lastPayment: paymentAmountValue,
+          lastPaymentDate: new Date(),
+        })
+      }
+
+      setPaymentAmount({ ...paymentAmount, [dueId]: "" })
       fetchDues()
     } catch (error) {
-      console.error("Error adding due:", error)
+      console.error("Error processing payment:", error)
     }
   }
 
@@ -75,6 +85,7 @@ function Dues() {
       await updateDoc(doc(db, "dues", dueId), {
         status: "paid",
         paidAt: new Date(),
+        remainingAmount: 0,
       })
       fetchDues()
     } catch (error) {
@@ -91,7 +102,11 @@ function Dues() {
     }
   }
 
-  const totalPending = dues.filter((due) => due.status === "pending").reduce((sum, due) => sum + due.amount, 0)
+  const totalPending = Object.values(dues)
+    .flat()
+    .reduce((sum, due) => {
+      return sum + (due.remainingAmount || due.amount)
+    }, 0)
 
   if (loading) {
     return <div className={styles.loading}>Loading dues...</div>
@@ -101,9 +116,6 @@ function Dues() {
     <div className={styles.container}>
       <div className={styles.header}>
         <h1 className={styles.title}>Pending Dues</h1>
-        <button onClick={() => setShowForm(!showForm)} className={styles.addButton}>
-          {showForm ? "Cancel" : "Add Due"}
-        </button>
       </div>
 
       <div className={styles.summary}>
@@ -112,94 +124,76 @@ function Dues() {
           <p className={styles.amount}>${totalPending.toFixed(2)}</p>
         </div>
         <div className={styles.summaryCard}>
-          <h3>Pending Count</h3>
-          <p className={styles.count}>{dues.filter((due) => due.status === "pending").length}</p>
+          <h3>Customers with Dues</h3>
+          <p className={styles.count}>{Object.keys(dues).length}</p>
         </div>
       </div>
 
-      {showForm && (
-        <form onSubmit={handleSubmit} className={styles.form}>
-          <div className={styles.formGroup}>
-            <label>Customer Name</label>
-            <input
-              type="text"
-              value={formData.customerName}
-              onChange={(e) => setFormData({ ...formData, customerName: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Amount ($)</label>
-            <input
-              type="number"
-              step="0.01"
-              value={formData.amount}
-              onChange={(e) => setFormData({ ...formData, amount: e.target.value })}
-              required
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Description</label>
-            <input
-              type="text"
-              value={formData.description}
-              onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-              placeholder="What is this payment for?"
-            />
-          </div>
-
-          <div className={styles.formGroup}>
-            <label>Due Date</label>
-            <input
-              type="date"
-              value={formData.dueDate}
-              onChange={(e) => setFormData({ ...formData, dueDate: e.target.value })}
-              required
-            />
-          </div>
-
-          <button type="submit" className={styles.submitButton}>
-            Add Due
-          </button>
-        </form>
-      )}
-
       <div className={styles.duesList}>
-        {dues.length === 0 ? (
-          <p className={styles.noDues}>No dues recorded yet.</p>
+        {Object.keys(dues).length === 0 ? (
+          <p className={styles.noDues}>No pending dues.</p>
         ) : (
-          dues.map((due) => {
-            const dueDate = due.dueDate.toDate()
-            const isOverdue = dueDate < new Date() && due.status === "pending"
+          Object.entries(dues).map(([customerName, customerDues]) => {
+            const totalCustomerDue = customerDues.reduce((sum, due) => sum + (due.remainingAmount || due.amount), 0)
 
             return (
-              <div
-                key={due.id}
-                className={`${styles.dueCard} ${due.status === "paid" ? styles.paid : ""} ${isOverdue ? styles.overdue : ""}`}
-              >
-                <div className={styles.dueInfo}>
-                  <h3>{due.customerName}</h3>
-                  <p className={styles.dueAmount}>${due.amount.toFixed(2)}</p>
-                  <p className={styles.description}>{due.description}</p>
-                  <p className={styles.dueDate}>
-                    Due: {dueDate.toLocaleDateString()}
-                    {isOverdue && <span className={styles.overdueLabel}> (Overdue)</span>}
-                  </p>
-                  <p className={styles.status}>Status: {due.status}</p>
-                </div>
+              <div key={customerName} className={styles.customerSection}>
+                <h2 className={styles.customerName}>
+                  {customerName} - ${totalCustomerDue.toFixed(2)}
+                </h2>
 
-                <div className={styles.actions}>
-                  {due.status === "pending" && (
-                    <button onClick={() => markAsPaid(due.id)} className={styles.paidButton}>
-                      Mark Paid
-                    </button>
-                  )}
-                  <button onClick={() => deleteDue(due.id)} className={styles.deleteButton}>
-                    Delete
-                  </button>
-                </div>
+                {customerDues.map((due) => {
+                  const currentAmount = due.remainingAmount || due.amount
+                  const transactionDate = due.transactionDate?.toDate() || due.createdAt?.toDate()
+
+                  return (
+                    <div key={due.id} className={styles.dueCard}>
+                      <div className={styles.dueInfo}>
+                        <div className={styles.transactionDetails}>
+                          <p>
+                            <strong>Description:</strong> {due.description || "N/A"}
+                          </p>
+                          <p>
+                            <strong>Amount:</strong> ${due.amount?.toFixed(2) ?? "N/A"}
+                          </p>
+                          <p>
+                            <strong>Remaining:</strong> ${currentAmount.toFixed(2)}
+                          </p>
+                          <p>
+                            <strong>Transaction Date:</strong> {transactionDate?.toLocaleDateString()}
+                          </p>
+                        </div>
+                      </div>
+
+                      <div className={styles.actions}>
+                        <div className={styles.paymentSection}>
+                          <input
+                            type="number"
+                            step="0.01"
+                            max={currentAmount}
+                            placeholder="Payment amount"
+                            value={paymentAmount[due.id] || ""}
+                            onChange={(e) => setPaymentAmount({ ...paymentAmount, [due.id]: e.target.value })}
+                            className={styles.paymentInput}
+                          />
+                          <button
+                            onClick={() => handlePartialPayment(due.id, currentAmount)}
+                            className={styles.paymentButton}
+                          >
+                            Pay
+                          </button>
+                        </div>
+
+                        <button onClick={() => markAsPaid(due.id)} className={styles.paidButton}>
+                          Mark Fully Paid
+                        </button>
+                        <button onClick={() => deleteDue(due.id)} className={styles.deleteButton}>
+                          Delete
+                        </button>
+                      </div>
+                    </div>
+                  )
+                })}
               </div>
             )
           })
@@ -209,4 +203,4 @@ function Dues() {
   )
 }
 
-export default Dues;
+export default Dues

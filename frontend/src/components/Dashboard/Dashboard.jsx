@@ -82,7 +82,8 @@ function Dashboard() {
       duesSnapshot.forEach((doc) => {
         const data = doc.data()
         if (data.status === "pending") {
-          totalPendingDues += data.amount || 0
+          // Use remainingAmount if present, else amount
+          totalPendingDues += (typeof data.remainingAmount === 'number' ? data.remainingAmount : data.amount) || 0
 
           if (data.dueDate && data.dueDate.toDate() < now) {
             overdueDues++

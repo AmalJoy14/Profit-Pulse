@@ -17,20 +17,6 @@
   margin: 0;
 }
 
-.addButton {
-  background: #007bff;
-  color: white;
-  border: none;
-  padding: 10px 20px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-}
-
-.addButton:hover {
-  background: #0056b3;
-}
-
 .summary {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
@@ -67,116 +53,102 @@
   margin: 0;
 }
 
-.form {
+/* Added styles for the actual class names used in component */
+.duesList {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+}
+
+.customerSection {
   background: white;
-  padding: 20px;
   border-radius: 8px;
   box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
-  margin-bottom: 30px;
+  overflow: hidden;
 }
 
-.formGroup {
-  margin-bottom: 15px;
-}
-
-.formGroup label {
-  display: block;
-  margin-bottom: 5px;
+.customerName {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  margin: 0;
+  font-size: 1.2rem;
   font-weight: bold;
   color: #333;
-}
-
-.formGroup input {
-  width: 100%;
-  padding: 10px;
-  border: 1px solid #ddd;
-  border-radius: 4px;
-  font-size: 1rem;
-}
-
-.submitButton {
-  background: #28a745;
-  color: white;
-  border: none;
-  padding: 12px 24px;
-  border-radius: 5px;
-  cursor: pointer;
-  font-size: 1rem;
-  width: 100%;
-}
-
-.submitButton:hover {
-  background: #218838;
-}
-
-.duesList {
-  display: grid;
-  gap: 15px;
+  border-bottom: 1px solid #dee2e6;
 }
 
 .dueCard {
-  background: white;
   padding: 20px;
-  border-radius: 8px;
-  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  border-bottom: 1px solid #f0f0f0;
   display: flex;
   justify-content: space-between;
-  align-items: center;
-  border-left: 4px solid #ffc107;
+  align-items: flex-start;
+  gap: 20px;
 }
 
-.dueCard.paid {
-  border-left-color: #28a745;
-  opacity: 0.7;
+.dueCard:last-child {
+  border-bottom: none;
 }
 
-.dueCard.overdue {
-  border-left-color: #dc3545;
-  background: #fff5f5;
+.dueInfo {
+  flex: 1;
 }
 
-.dueInfo h3 {
-  margin: 0 0 5px 0;
+.transactionDetails {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.transactionDetails p {
+  margin: 0;
   color: #333;
+  font-size: 0.95rem;
 }
 
-.dueAmount {
-  font-size: 1.2rem;
-  font-weight: bold;
-  color: #dc3545;
-  margin: 5px 0;
-}
-
-.description {
+.transactionDetails strong {
   color: #666;
-  margin: 5px 0;
-}
-
-.dueDate {
-  color: #666;
-  font-size: 0.9rem;
-  margin: 5px 0;
-}
-
-.overdueLabel {
-  color: #dc3545;
-  font-weight: bold;
-}
-
-.status {
-  font-size: 0.9rem;
-  color: #666;
-  text-transform: capitalize;
-  margin: 5px 0 0 0;
+  font-weight: 600;
 }
 
 .actions {
   display: flex;
+  flex-direction: column;
   gap: 10px;
+  min-width: 200px;
+}
+
+.paymentSection {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+
+.paymentInput {
+  flex: 1;
+  padding: 8px 12px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  font-size: 0.9rem;
+}
+
+.paymentButton {
+  background: #28a745;
+  color: white;
+  border: none;
+  padding: 8px 16px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  white-space: nowrap;
+}
+
+.paymentButton:hover {
+  background: #218838;
 }
 
 .paidButton {
-  background: #28a745;
+  background: #007bff;
   color: white;
   border: none;
   padding: 8px 16px;
@@ -186,7 +158,7 @@
 }
 
 .paidButton:hover {
-  background: #218838;
+  background: #0056b3;
 }
 
 .deleteButton {
@@ -202,12 +174,96 @@
 .deleteButton:hover {
   background: #c82333;
 }
+/* </CHANGE> */
+
+/* Old styles kept for compatibility */
+.customerGroup {
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  margin-bottom: 20px;
+  overflow: hidden;
+}
+
+.customerHeader {
+  background: #f8f9fa;
+  padding: 15px 20px;
+  border-bottom: 1px solid #dee2e6;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.customerTotal {
+  font-size: 1.1rem;
+  font-weight: bold;
+  color: #dc3545;
+}
+
+.transactionsList {
+  padding: 0;
+}
+
+.transactionItem {
+  padding: 15px 20px;
+  border-bottom: 1px solid #f0f0f0;
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 15px;
+}
+
+.transactionItem:last-child {
+  border-bottom: none;
+}
+
+.transactionItem h4 {
+  margin: 0 0 5px 0;
+  color: #333;
+  font-size: 1rem;
+}
+
+.transactionMeta {
+  color: #666;
+  font-size: 0.9rem;
+  margin: 2px 0;
+}
+
+.transactionAmount {
+  font-weight: bold;
+  color: #dc3545;
+}
+
+.paymentForm {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.markPaidButton {
+  background: #007bff;
+  color: white;
+  border: none;
+  padding: 6px 12px;
+  border-radius: 4px;
+  cursor: pointer;
+  font-size: 0.9rem;
+  margin-top: 4px;
+}
+
+.markPaidButton:hover {
+  background: #0056b3;
+}
 
 .noDues {
   text-align: center;
   color: #666;
   font-style: italic;
   padding: 40px;
+  background: white;
+  border-radius: 8px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
 }
 
 .loading {
@@ -223,6 +279,7 @@
     align-items: stretch;
   }
 
+  /* Added mobile responsive styles for new component structure */
   .dueCard {
     flex-direction: column;
     align-items: stretch;
@@ -230,6 +287,32 @@
   }
 
   .actions {
-    justify-content: center;
+    min-width: auto;
+  }
+
+  .paymentSection {
+    flex-direction: column;
+    gap: 8px;
+  }
+
+  .paymentInput {
+    width: 100%;
+  }
+  /* </CHANGE> */
+
+  .customerHeader {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 8px;
+  }
+
+  .transactionItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .paymentForm {
+    align-items: stretch;
   }
 }
