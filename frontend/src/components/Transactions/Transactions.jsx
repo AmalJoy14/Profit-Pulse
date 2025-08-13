@@ -10,7 +10,7 @@ function Transactions() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState([])
   const [stockItems, setStockItems] = useState([])
-  const [searchTerm, setSearchTerm] = useState("") // Added search state for filtering transactions by customer name
+  const [searchTerm, setSearchTerm] = useState("") // Search state for filtering transactions by customer email
   const [formData, setFormData] = useState({
     itemName: "",
     sellingPrice: "",
@@ -182,12 +182,12 @@ function Transactions() {
       : 0
 
   const filteredTransactions = transactions.filter((transaction) =>
-    transaction.customerName.toLowerCase().includes(searchTerm.toLowerCase()),
-  ) // Added function to filter transactions by customer name
+    (transaction.customerEmail || "").toLowerCase().includes(searchTerm.toLowerCase())
+  ) // Filter transactions by customer email
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Sales Transactions</h1>
+  <h1 className={styles.title}>Transactions</h1>
 
       <div className={styles.formCard}>
         <h2>Record New Sale</h2>
@@ -329,11 +329,11 @@ function Transactions() {
 
       <div className={styles.transactionsList}>
         <div className={styles.sectionHeader}>
-          <h2>Recent Sales</h2>
+          <h2>Transactions</h2>
           <div className={styles.searchContainer}>
             <input
               type="text"
-              placeholder="Search by customer name..."
+              placeholder="Search by customer email..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={styles.searchInput}
@@ -353,6 +353,9 @@ function Transactions() {
                 <div className={styles.customerInfo}>
                   <p>
                     <strong>Customer:</strong> {transaction.customerName}
+                  </p>
+                  <p>
+                    <strong>Email:</strong> {transaction.customerEmail || "N/A"}
                   </p>
                 </div>
                 <div className={styles.transactionDetails}>
