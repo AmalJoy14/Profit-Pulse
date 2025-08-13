@@ -12,6 +12,7 @@ function Dashboard() {
     totalProfit: 0,
     profitableDeals: 0,
     lossDeals: 0,
+    totalStockItems: 0,
     nearExpiryItems: 0,
     expiredItems: 0,
     totalPendingDues: 0,
@@ -28,18 +29,18 @@ function Dashboard() {
   const fetchStats = async () => {
     try {
       const transactionsQuery = query(collection(db, "transactions"), where("userId", "==", user.uid))
+      const stockQuery = query(collection(db, "stock"), where("userId", "==", user.uid))
       const duesQuery = query(collection(db, "dues"), where("userId", "==", user.uid))
 
-      const [transactionsSnapshot, duesSnapshot] = await Promise.all([getDocs(transactionsQuery), getDocs(duesQuery)])
+      const [transactionsSnapshot, stockSnapshot, duesSnapshot] = await Promise.all([
+        getDocs(transactionsQuery),
+        getDocs(stockQuery),
+        getDocs(duesQuery),
+      ])
 
       let totalProfit = 0
       let profitableDeals = 0
       let lossDeals = 0
-      let nearExpiryItems = 0
-      let expiredItems = 0
-
-      const now = new Date()
-      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
 
       transactionsSnapshot.forEach((doc) => {
         const data = doc.data()
@@ -52,6 +53,18 @@ function Dashboard() {
         } else if (profit < 0) {
           lossDeals++
         }
+      })
+
+      let totalStockItems = 0
+      let nearExpiryItems = 0
+      let expiredItems = 0
+
+      const now = new Date()
+      const sevenDaysFromNow = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000)
+
+      stockSnapshot.forEach((doc) => {
+        const data = doc.data()
+        totalStockItems += data.quantity || 0
 
         if (data.expiryDate) {
           const expiryDate = data.expiryDate.toDate()
@@ -81,6 +94,7 @@ function Dashboard() {
         totalProfit,
         profitableDeals,
         lossDeals,
+        totalStockItems,
         nearExpiryItems,
         expiredItems,
         totalPendingDues,
@@ -108,23 +122,18 @@ function Dashboard() {
         </div>
 
         <div className={styles.statCard}>
-          <h3>Profitable Deals</h3>
+          <h3>Profitable Sales</h3>
           <p className={styles.profit}>{stats.profitableDeals}</p>
         </div>
 
         <div className={styles.statCard}>
-          <h3>Loss Deals</h3>
+          <h3>Loss Transactions</h3>
           <p className={styles.loss}>{stats.lossDeals}</p>
         </div>
 
         <div className={styles.statCard}>
-          <h3>Pending Dues</h3>
-          <p className={styles.warning}>${stats.totalPendingDues.toFixed(2)}</p>
-        </div>
-
-        <div className={styles.statCard}>
-          <h3>Overdue Payments</h3>
-          <p className={styles.loss}>{stats.overdueDues}</p>
+          <h3>Total Stock Items</h3>
+          <p className={styles.info}>{stats.totalStockItems}</p>
         </div>
 
         <div className={styles.statCard}>
@@ -135,6 +144,16 @@ function Dashboard() {
         <div className={styles.statCard}>
           <h3>Expired Items</h3>
           <p className={styles.loss}>{stats.expiredItems}</p>
+        </div>
+
+        <div className={styles.statCard}>
+          <h3>Pending Dues</h3>
+          <p className={styles.warning}>${stats.totalPendingDues.toFixed(2)}</p>
+        </div>
+
+        <div className={styles.statCard}>
+          <h3>Overdue Payments</h3>
+          <p className={styles.loss}>{stats.overdueDues}</p>
         </div>
       </div>
     </div>

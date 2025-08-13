@@ -59,6 +59,33 @@
   box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
 }
 
+.inputGroup select {
+  padding: 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  font-size: 16px;
+  background: white;
+}
+
+.inputGroup select:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.stockInfo {
+  color: #6b7280;
+  font-size: 12px;
+  margin-top: 4px;
+}
+
+.profitInfo {
+  color: #059669;
+  font-size: 12px;
+  margin-top: 4px;
+  font-weight: 500;
+}
+
 .submitButton {
   background: #2563eb;
   color: white;
@@ -79,6 +106,7 @@
 .submitButton:disabled {
   opacity: 0.6;
   cursor: not-allowed;
+  background: #9ca3af;
 }
 
 .transactionsList {

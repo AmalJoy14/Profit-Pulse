@@ -18,7 +18,6 @@ function Stock() {
     costPrice: "",
     quantity: "",
     expiryDate: "",
-    notes: "",
   })
 
   useEffect(() => {
@@ -34,26 +33,13 @@ function Stock() {
 
   const fetchStockItems = async () => {
     try {
-      const transactionQuery = query(collection(db, "transactions"), where("userId", "==", user.uid))
-      const inventoryQuery = query(collection(db, "inventory"), where("userId", "==", user.uid))
-
-      const [transactionSnapshot, inventorySnapshot] = await Promise.all([
-        getDocs(transactionQuery),
-        getDocs(inventoryQuery),
-      ])
+      const stockQuery = query(collection(db, "stock"), where("userId", "==", user.uid))
+      const stockSnapshot = await getDocs(stockQuery)
 
       const items = []
-
-      transactionSnapshot.forEach((doc) => {
+      stockSnapshot.forEach((doc) => {
         const data = doc.data()
-        if (data.expiryDate) {
-          items.push({ id: doc.id, ...data, type: "transaction" })
-        }
-      })
-
-      inventorySnapshot.forEach((doc) => {
-        const data = doc.data()
-        items.push({ id: doc.id, ...data, type: "inventory" })
+        items.push({ id: doc.id, ...data })
       })
 
       setStockItems(items)
@@ -78,14 +64,21 @@ function Stock() {
   }
 
   const removeExpiredItems = async () => {
-    if (!confirm("Are you sure you want to remove all expired items? This will record them as losses.")) return
+    const expiredItems = stockItems.filter((item) => item.expiryDate && getExpiryStatus(item.expiryDate) === "expired")
+
+    if (expiredItems.length === 0) {
+      alert("No expired items found")
+      return
+    }
+
+    if (
+      !confirm(`Are you sure you want to remove ${expiredItems.length} expired items? This will record them as losses.`)
+    )
+      return
 
     try {
-      const expiredItems = stockItems.filter(
-        (item) => item.expiryDate && getExpiryStatus(item.expiryDate) === "expired",
-      )
-
       for (const item of expiredItems) {
+        // Record as loss transaction
         await addDoc(collection(db, "transactions"), {
           userId: user.uid,
           itemName: `${item.itemName} (Expired)`,
@@ -97,7 +90,8 @@ function Stock() {
           notes: `Expired item removed from stock. Original expiry: ${item.expiryDate.toDate().toLocaleDateString()}`,
         })
 
-        await deleteDoc(doc(db, "transactions", item.id))
+        // Remove from stock
+        await deleteDoc(doc(db, "stock", item.id))
       }
 
       await fetchStockItems()
@@ -110,7 +104,7 @@ function Stock() {
 
   const deleteStockItem = async (itemId, itemName, item) => {
     const reason = prompt(
-      `Why are you removing "${itemName}"?\n1. Expired\n2. Damaged\n3. Sold\n4. Other\n\nEnter reason:`,
+      `Why are you removing "${itemName}"?\n1. Expired\n2. Damaged\n3. Other\n\nEnter reason:`,
       "Expired",
     )
 
@@ -119,6 +113,7 @@ function Stock() {
     if (!confirm(`Are you sure you want to remove "${itemName}" from stock?`)) return
 
     try {
+      // Record as loss if expired or damaged
       if (reason.toLowerCase().includes("expired") || reason.toLowerCase().includes("damaged")) {
         await addDoc(collection(db, "transactions"), {
           userId: user.uid,
@@ -132,8 +127,7 @@ function Stock() {
         })
       }
 
-      const collectionName = item.type === "inventory" ? "inventory" : "transactions"
-      await deleteDoc(doc(db, collectionName, itemId))
+      await deleteDoc(doc(db, "stock", itemId))
       await fetchStockItems()
 
       if (reason.toLowerCase().includes("expired") || reason.toLowerCase().includes("damaged")) {
@@ -147,7 +141,7 @@ function Stock() {
     }
   }
 
-  const updateQuantity = async (itemId, currentQuantity, itemName, item) => {
+  const updateQuantity = async (itemId, currentQuantity, itemName) => {
     const newQuantity = prompt(`Update quantity for "${itemName}" (current: ${currentQuantity}):`, currentQuantity)
 
     if (newQuantity === null) return
@@ -160,14 +154,17 @@ function Stock() {
 
     if (quantity === 0) {
       if (confirm("Quantity is 0. Remove this item from stock?")) {
-        await deleteStockItem(itemId, itemName, item)
+        await deleteStockItem(
+          itemId,
+          itemName,
+          stockItems.find((item) => item.id === itemId),
+        )
       }
       return
     }
 
     try {
-      const collectionName = item.type === "inventory" ? "inventory" : "transactions"
-      await updateDoc(doc(db, collectionName, itemId), {
+      await updateDoc(doc(db, "stock", itemId), {
         quantity: quantity,
       })
       await fetchStockItems()
@@ -178,24 +175,22 @@ function Stock() {
     }
   }
 
-  const addInventoryItem = async (e) => {
+  const addStockItem = async (e) => {
     e.preventDefault()
 
-    if (!formData.itemName || !formData.costPrice || !formData.quantity) {
+    if (!formData.itemName || !formData.costPrice || !formData.quantity || !formData.expiryDate) {
       alert("Please fill in all required fields")
       return
     }
 
     try {
-      await addDoc(collection(db, "inventory"), {
+      await addDoc(collection(db, "stock"), {
         userId: user.uid,
         itemName: formData.itemName,
         costPrice: Number.parseFloat(formData.costPrice),
         quantity: Number.parseInt(formData.quantity),
-        expiryDate: formData.expiryDate ? new Date(formData.expiryDate) : null,
-        notes: formData.notes,
+        expiryDate: new Date(formData.expiryDate),
         addedDate: new Date(),
-        type: "inventory",
       })
 
       setFormData({
@@ -203,14 +198,13 @@ function Stock() {
         costPrice: "",
         quantity: "",
         expiryDate: "",
-        notes: "",
       })
       setShowAddForm(false)
       await fetchStockItems()
-      alert("Item added to inventory successfully!")
+      alert("Item added to stock successfully!")
     } catch (error) {
-      console.error("Error adding inventory item:", error)
-      alert("Error adding item to inventory")
+      console.error("Error adding stock item:", error)
+      alert("Error adding item to stock")
     }
   }
 
@@ -220,7 +214,7 @@ function Stock() {
 
   return (
     <div className={styles.container}>
-      <h1 className={styles.title}>Stock & Expiry Tracking</h1>
+      <h1 className={styles.title}>Stock Management</h1>
 
       <div className={styles.searchContainer}>
         <input
@@ -231,7 +225,7 @@ function Stock() {
           className={styles.searchInput}
         />
         <button onClick={() => setShowAddForm(!showAddForm)} className={styles.addInventoryBtn}>
-          {showAddForm ? "Cancel" : "Add Inventory"}
+          {showAddForm ? "Cancel" : "Add Stock Item"}
         </button>
         <button
           onClick={removeExpiredItems}
@@ -246,8 +240,8 @@ function Stock() {
       </div>
 
       {showAddForm && (
-        <form onSubmit={addInventoryItem} className={styles.addForm}>
-          <h3>Add Item to Inventory</h3>
+        <form onSubmit={addStockItem} className={styles.addForm}>
+          <h3>Add Item to Stock</h3>
           <div className={styles.formGrid}>
             <input
               type="text"
@@ -273,54 +267,43 @@ function Stock() {
             />
             <input
               type="date"
-              placeholder="Expiry Date (optional)"
+              placeholder="Expiry Date *"
               value={formData.expiryDate}
               onChange={(e) => setFormData({ ...formData, expiryDate: e.target.value })}
-            />
-            <input
-              type="text"
-              placeholder="Notes (optional)"
-              value={formData.notes}
-              onChange={(e) => setFormData({ ...formData, notes: e.target.value })}
+              required
             />
           </div>
           <button type="submit" className={styles.submitBtn}>
-            Add to Inventory
+            Add to Stock
           </button>
         </form>
       )}
 
       {filteredItems.length === 0 ? (
         <div className={styles.noItems}>
-          {stockItems.length === 0 ? "No stock items found. Add some inventory!" : "No items match your search."}
+          {stockItems.length === 0 ? "No stock items found. Add some items!" : "No items match your search."}
         </div>
       ) : (
         <div className={styles.stockGrid}>
           {filteredItems.map((item) => {
-            const expiryStatus = item.expiryDate ? getExpiryStatus(item.expiryDate) : "good"
+            const expiryStatus = getExpiryStatus(item.expiryDate)
             return (
               <div key={item.id} className={`${styles.stockCard} ${styles[expiryStatus]}`}>
                 <h3>{item.itemName}</h3>
-                <div className={styles.typeBadge}>{item.type === "inventory" ? "INVENTORY" : "FROM SALE"}</div>
                 <div className={styles.stockDetails}>
                   <p>Quantity: {item.quantity}</p>
                   <p>Cost Price: ${item.costPrice.toFixed(2)}</p>
-                  {item.sellingPrice && <p>Selling Price: ${item.sellingPrice.toFixed(2)}</p>}
-                  <p>Added: {(item.addedDate || item.transactionDate).toDate().toLocaleDateString()}</p>
-                  {item.expiryDate && (
-                    <p className={styles.expiryDate}>Expiry: {item.expiryDate.toDate().toLocaleDateString()}</p>
-                  )}
-                  {item.expiryDate && (
-                    <div className={styles.statusBadge}>
-                      {expiryStatus === "expired" && "EXPIRED"}
-                      {expiryStatus === "nearExpiry" && "EXPIRES SOON"}
-                      {expiryStatus === "good" && "GOOD"}
-                    </div>
-                  )}
+                  <p>Added: {item.addedDate.toDate().toLocaleDateString()}</p>
+                  <p className={styles.expiryDate}>Expiry: {item.expiryDate.toDate().toLocaleDateString()}</p>
+                  <div className={styles.statusBadge}>
+                    {expiryStatus === "expired" && "EXPIRED"}
+                    {expiryStatus === "nearExpiry" && "EXPIRES SOON"}
+                    {expiryStatus === "good" && "GOOD"}
+                  </div>
                 </div>
                 <div className={styles.stockActions}>
                   <button
-                    onClick={() => updateQuantity(item.id, item.quantity, item.itemName, item)}
+                    onClick={() => updateQuantity(item.id, item.quantity, item.itemName)}
                     className={styles.updateBtn}
                   >
                     Update Qty
