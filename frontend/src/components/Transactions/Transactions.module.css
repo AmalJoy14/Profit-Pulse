@@ -206,6 +206,170 @@
   font-weight: 600;
 }
 
+/* Added styles for multi-item selection */
+.selectedItems {
+  border: 1px solid #e5e7eb;
+  border-radius: 6px;
+  padding: 15px;
+  background: #f9fafb;
+  margin-bottom: 15px;
+}
+
+.selectedItems h4 {
+  margin: 0 0 15px 0;
+  color: #374151;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.selectedItem {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+  padding: 12px;
+  background: white;
+  border: 1px solid #d1d5db;
+  border-radius: 4px;
+  margin-bottom: 10px;
+}
+
+.selectedItem:last-child {
+  margin-bottom: 0;
+}
+
+.itemInfo {
+  flex: 1;
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr 1fr;
+  gap: 15px;
+  align-items: center;
+}
+
+.itemName {
+  font-weight: 500;
+  color: #374151;
+}
+
+.itemQuantity,
+.itemPrice,
+.itemTotal {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.itemTotal {
+  font-weight: 600;
+  color: #059669;
+}
+
+.removeItemButton {
+  background: #ef4444;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 6px 10px;
+  font-size: 12px;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  flex-shrink: 0;
+}
+
+.removeItemButton:hover {
+  background: #dc2626;
+}
+
+.addItemButton {
+  background: #059669;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  padding: 10px 16px;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color 0.2s;
+  margin-top: 10px;
+}
+
+.addItemButton:hover {
+  background: #047857;
+}
+
+.itemRow {
+  display: grid;
+  grid-template-columns: 2fr 1fr 1fr;
+  gap: 15px;
+  align-items: end;
+  padding: 15px;
+  background: #f3f4f6;
+  border-radius: 6px;
+  margin-bottom: 15px;
+}
+
+.totalSection {
+  background: #f0f9ff;
+  border: 1px solid #0ea5e9;
+  border-radius: 6px;
+  padding: 15px;
+  margin: 20px 0;
+}
+
+.totalSection h4 {
+  margin: 0 0 10px 0;
+  color: #0c4a6e;
+  font-size: 16px;
+}
+
+.totalInfo {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 15px;
+}
+
+.totalInfo p {
+  margin: 0;
+  font-size: 14px;
+  color: #374151;
+}
+
+.totalInfo .profit {
+  color: #059669 !important;
+  font-weight: 600;
+}
+
+.multiItemTransaction {
+  border-left: 4px solid #059669;
+}
+
+.multiItemTransaction .transactionDetails {
+  gap: 12px;
+}
+
+.itemsList {
+  background: #f9fafb;
+  border-radius: 4px;
+  padding: 10px;
+  margin-top: 8px;
+}
+
+.itemsList h5 {
+  margin: 0 0 8px 0;
+  font-size: 14px;
+  color: #374151;
+  font-weight: 600;
+}
+
+.itemEntry {
+  font-size: 13px;
+  color: #6b7280;
+  margin-bottom: 4px;
+  padding-left: 10px;
+}
+
+.itemEntry:last-child {
+  margin-bottom: 0;
+}
+
 @media (max-width: 768px) {
   .container {
     padding: 15px;
@@ -240,5 +404,33 @@
 
   .searchInput {
     width: 100%;
+  }
+
+  /* Added mobile responsive styles for multi-item selection */
+  .itemInfo {
+    grid-template-columns: 1fr;
+    gap: 8px;
+    text-align: left;
+  }
+
+  .itemRow {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .totalInfo {
+    grid-template-columns: 1fr;
+    gap: 10px;
+  }
+
+  .selectedItem {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 10px;
+  }
+
+  .removeItemButton {
+    align-self: flex-end;
+    width: fit-content;
   }
 }

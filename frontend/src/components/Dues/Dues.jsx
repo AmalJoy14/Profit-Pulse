@@ -135,66 +135,79 @@ function Dues() {
         ) : (
           Object.entries(dues).map(([customerKey, customerDues]) => {
             const totalCustomerDue = customerDues.reduce((sum, due) => sum + (due.remainingAmount || due.amount), 0)
-            // Find a representative due for name/email display
             const repDue = customerDues[0] || {}
             return (
               <div key={customerKey} className={styles.customerSection}>
                 <h2 className={styles.customerName}>
                   {repDue.customerName || "Unknown"} <span style={{fontWeight:400, fontSize:'0.9em'}}>({repDue.customerEmail || customerKey})</span> - ${totalCustomerDue.toFixed(2)}
                 </h2>
-
-                {customerDues.map((due) => {
-                  const currentAmount = due.remainingAmount || due.amount
-                  const transactionDate = due.transactionDate?.toDate() || due.createdAt?.toDate()
-
-                  return (
-                    <div key={due.id} className={styles.dueCard}>
-                      <div className={styles.dueInfo}>
-                        <div className={styles.transactionDetails}>
-                          <p>
-                            <strong>Description:</strong> {due.description || "N/A"}
-                          </p>
-                          <p>
-                            <strong>Amount:</strong> ${due.amount?.toFixed(2) ?? "N/A"}
-                          </p>
-                          <p>
-                            <strong>Remaining:</strong> ${currentAmount.toFixed(2)}
-                          </p>
-                          <p>
-                            <strong>Transaction Date:</strong> {transactionDate?.toLocaleDateString()}
-                          </p>
-                        </div>
-                      </div>
-
-                      <div className={styles.actions}>
-                        <div className={styles.paymentSection}>
-                          <input
-                            type="number"
-                            step="0.01"
-                            max={currentAmount}
-                            placeholder="Payment amount"
-                            value={paymentAmount[due.id] || ""}
-                            onChange={(e) => setPaymentAmount({ ...paymentAmount, [due.id]: e.target.value })}
-                            className={styles.paymentInput}
-                          />
-                          <button
-                            onClick={() => handlePartialPayment(due.id, currentAmount)}
-                            className={styles.paymentButton}
-                          >
-                            Pay
-                          </button>
-                        </div>
-
-                        <button onClick={() => markAsPaid(due.id)} className={styles.paidButton}>
-                          Mark Fully Paid
-                        </button>
-                        <button onClick={() => deleteDue(due.id)} className={styles.deleteButton}>
-                          Delete
-                        </button>
-                      </div>
+                <div className={styles.dueCard}>
+                  <div className={styles.dueInfo}>
+                    <div className={styles.transactionDetails}>
+                      <p>
+                        <strong>Remaining Due:</strong> ${totalCustomerDue.toFixed(2)}
+                      </p>
                     </div>
-                  )
-                })}
+                  </div>
+                  <div className={styles.actions}>
+                    <div className={styles.paymentSection}>
+                      <input
+                        type="number"
+                        step="0.01"
+                        max={totalCustomerDue}
+                        placeholder="Payment amount"
+                        value={paymentAmount[customerKey] || ""}
+                        onChange={(e) => setPaymentAmount({ ...paymentAmount, [customerKey]: e.target.value })}
+                        className={styles.paymentInput}
+                      />
+                      <button
+                        onClick={async () => {
+                          const payAmt = Number.parseFloat(paymentAmount[customerKey] || 0)
+                          if (payAmt <= 0 || payAmt > totalCustomerDue) {
+                            alert("Please enter a valid payment amount")
+                            return
+                          }
+                          for (const due of customerDues) {
+                            const dueAmt = due.remainingAmount || due.amount
+                            if (payAmt <= 0) break
+                            if (dueAmt > 0) {
+                              const payThis = Math.min(dueAmt, payAmt)
+                              await handlePartialPayment(due.id, dueAmt < payAmt ? dueAmt : payAmt)
+                              payAmt -= payThis
+                            }
+                          }
+                          setPaymentAmount({ ...paymentAmount, [customerKey]: "" })
+                          fetchDues()
+                        }}
+                        className={styles.paymentButton}
+                      >
+                        Pay
+                      </button>
+                    </div>
+                    <button
+                      onClick={async () => {
+                        for (const due of customerDues) {
+                          await markAsPaid(due.id)
+                        }
+                        fetchDues()
+                      }}
+                      className={styles.paidButton}
+                    >
+                      Mark Fully Paid
+                    </button>
+                    <button
+                      onClick={async () => {
+                        for (const due of customerDues) {
+                          await deleteDue(due.id)
+                        }
+                        fetchDues()
+                      }}
+                      className={styles.deleteButton}
+                    >
+                      Delete
+                    </button>
+                  </div>
+                </div>
               </div>
             )
           })

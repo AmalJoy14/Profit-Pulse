@@ -10,18 +10,15 @@ function Transactions() {
   const { user } = useAuth()
   const [transactions, setTransactions] = useState([])
   const [stockItems, setStockItems] = useState([])
-  const [searchTerm, setSearchTerm] = useState("") // Search state for filtering transactions by customer email
+  const [searchTerm, setSearchTerm] = useState("")
   const [formData, setFormData] = useState({
-    itemName: "",
-    sellingPrice: "",
-    quantity: "",
     transactionDate: "",
     customerName: "",
     customerEmail: "",
     amountPaid: "",
   })
+  const [selectedItems, setSelectedItems] = useState([])
   const [loading, setLoading] = useState(false)
-  const [selectedStock, setSelectedStock] = useState(null)
 
   useEffect(() => {
     if (user) {
@@ -67,17 +64,53 @@ function Transactions() {
     }
   }
 
+  const addItemToSelection = () => {
+    setSelectedItems([
+      ...selectedItems,
+      {
+        id: Date.now(),
+        itemName: "",
+        stockId: "",
+        quantity: "",
+        sellingPrice: "",
+        availableQuantity: 0,
+        costPrice: 0,
+      },
+    ])
+  }
+
+  const removeItemFromSelection = (id) => {
+    setSelectedItems(selectedItems.filter((item) => item.id !== id))
+  }
+
+  const updateSelectedItem = (id, field, value) => {
+    setSelectedItems(
+      selectedItems.map((item) => {
+        if (item.id === id) {
+          const updatedItem = { ...item, [field]: value }
+
+          if (field === "itemName") {
+            const stock = stockItems.find((stockItem) => stockItem.itemName === value)
+            if (stock) {
+              updatedItem.stockId = stock.id
+              updatedItem.availableQuantity = stock.quantity
+              updatedItem.costPrice = stock.costPrice
+            }
+          }
+
+          return updatedItem
+        }
+        return item
+      }),
+    )
+  }
+
   const handleInputChange = (e) => {
     const { name, value } = e.target
     setFormData({
       ...formData,
       [name]: value,
     })
-
-    if (name === "itemName") {
-      const stock = stockItems.find((item) => item.itemName === value)
-      setSelectedStock(stock || null)
-    }
   }
 
   const handleSubmit = async (e) => {
@@ -85,25 +118,53 @@ function Transactions() {
     setLoading(true)
 
     try {
-      if (!selectedStock) {
-        alert("Please select a valid item from stock")
+      if (selectedItems.length === 0) {
+        alert("Please add at least one item to the sale")
         setLoading(false)
         return
       }
 
-      const quantity = Number.parseInt(formData.quantity)
-      const sellingPrice = Number.parseFloat(formData.sellingPrice)
+      for (const item of selectedItems) {
+        if (!item.itemName || !item.quantity || !item.sellingPrice) {
+          alert("Please fill in all fields for each selected item")
+          setLoading(false)
+          return
+        }
+
+        const quantity = Number.parseInt(item.quantity)
+        if (quantity > item.availableQuantity) {
+          alert(`Not enough stock for ${item.itemName}! Available: ${item.availableQuantity}, Requested: ${quantity}`)
+          setLoading(false)
+          return
+        }
+      }
+
       const amountPaid = Number.parseFloat(formData.amountPaid)
 
-      if (quantity > selectedStock.quantity) {
-        alert(`Not enough stock! Available: ${selectedStock.quantity}, Requested: ${quantity}`)
-        setLoading(false)
-        return
-      }
+      let totalAmount = 0
+      let totalProfit = 0
+      const itemDetails = []
 
-      const costPrice = selectedStock.costPrice
-      const profit = (sellingPrice - costPrice) * quantity
-      const totalAmount = sellingPrice * quantity
+      selectedItems.forEach((item) => {
+        const quantity = Number.parseInt(item.quantity)
+        const sellingPrice = Number.parseFloat(item.sellingPrice)
+        const itemTotal = sellingPrice * quantity
+        const itemProfit = (sellingPrice - item.costPrice) * quantity
+
+        totalAmount += itemTotal
+        totalProfit += itemProfit
+
+        itemDetails.push({
+          itemName: item.itemName,
+          quantity,
+          sellingPrice,
+          costPrice: item.costPrice,
+          itemTotal,
+          itemProfit,
+          stockId: item.stockId,
+        })
+      })
+
       const dueAmount = totalAmount - amountPaid
 
       if (amountPaid > totalAmount) {
@@ -114,30 +175,28 @@ function Transactions() {
 
       const transactionData = {
         userId: user.uid,
-        itemName: formData.itemName,
-        costPrice,
-        sellingPrice,
-        quantity,
-        profit,
+        items: itemDetails,
+        totalProfit,
         transactionDate: new Date(formData.transactionDate),
-        stockId: selectedStock.id,
         customerName: formData.customerName,
         customerEmail: formData.customerEmail,
         totalAmount,
         amountPaid,
         dueAmount,
         paymentStatus: dueAmount > 0 ? "partial" : "paid",
+        itemCount: selectedItems.length,
       }
 
       await addDoc(collection(db, "transactions"), transactionData)
 
       if (dueAmount > 0) {
+        const itemsList = itemDetails.map((item) => `${item.quantity} ${item.itemName}`).join(", ")
         await addDoc(collection(db, "dues"), {
           userId: user.uid,
           customerName: formData.customerName,
           customerEmail: formData.customerEmail,
           amount: dueAmount,
-          description: `Sale of ${quantity} ${formData.itemName}`,
+          description: `Sale of ${itemsList}`,
           dueDate: new Date(formData.transactionDate),
           createdAt: new Date(),
           status: "pending",
@@ -145,21 +204,21 @@ function Transactions() {
         })
       }
 
-      const newStockQuantity = selectedStock.quantity - quantity
-      await updateDoc(doc(db, "stock", selectedStock.id), {
-        quantity: newStockQuantity,
-      })
+      for (const item of itemDetails) {
+        const currentStock = stockItems.find((stock) => stock.id === item.stockId)
+        const newQuantity = currentStock.quantity - item.quantity
+        await updateDoc(doc(db, "stock", item.stockId), {
+          quantity: newQuantity,
+        })
+      }
 
       setFormData({
-        itemName: "",
-        sellingPrice: "",
-        quantity: "",
         transactionDate: "",
         customerName: "",
         customerEmail: "",
         amountPaid: "",
       })
-      setSelectedStock(null)
+      setSelectedItems([])
 
       await fetchTransactions()
       await fetchStockItems()
@@ -176,18 +235,20 @@ function Transactions() {
     }
   }
 
-  const totalAmount =
-    selectedStock && formData.sellingPrice && formData.quantity
-      ? Number.parseFloat(formData.sellingPrice) * Number.parseInt(formData.quantity)
-      : 0
+  const totalAmount = selectedItems.reduce((total, item) => {
+    if (item.quantity && item.sellingPrice) {
+      return total + Number.parseFloat(item.sellingPrice) * Number.parseInt(item.quantity)
+    }
+    return total
+  }, 0)
 
   const filteredTransactions = transactions.filter((transaction) =>
     (transaction.customerEmail || "").toLowerCase().includes(searchTerm.toLowerCase())
-  ) // Filter transactions by customer email
+  )
 
   return (
     <div className={styles.container}>
-  <h1 className={styles.title}>Transactions</h1>
+      <h1 className={styles.title}>Sales Transactions</h1>
 
       <div className={styles.formCard}>
         <h2>Record New Sale</h2>
@@ -217,53 +278,109 @@ function Transactions() {
                 required
               />
             </div>
-
             <div className={styles.inputGroup}>
-              <label htmlFor="itemName">Select Item from Stock</label>
-              <select id="itemName" name="itemName" value={formData.itemName} onChange={handleInputChange} required>
-                <option value="">-- Select Item --</option>
-                {stockItems.map((item) => (
-                  <option key={item.id} value={item.itemName}>
-                    {item.itemName} (Available: {item.quantity})
-                  </option>
-                ))}
-              </select>
+              <label htmlFor="transactionDate">Sale Date</label>
+              <input
+                type="date"
+                id="transactionDate"
+                name="transactionDate"
+                value={formData.transactionDate}
+                onChange={handleInputChange}
+                required
+              />
             </div>
           </div>
 
-          <div className={styles.formRow}>
-            <div className={styles.inputGroup}>
-              <label htmlFor="quantity">Quantity to Sell</label>
-              <input
-                type="number"
-                id="quantity"
-                name="quantity"
-                value={formData.quantity}
-                onChange={handleInputChange}
-                min="1"
-                max={selectedStock ? selectedStock.quantity : 1}
-                required
-              />
-              {selectedStock && (
-                <small className={styles.stockInfo}>
-                  Max available: {selectedStock.quantity} | Cost: ${selectedStock.costPrice.toFixed(2)} each
-                </small>
-              )}
+          <div className={styles.itemsSection}>
+            <div className={styles.sectionHeader}>
+              <h3>Items to Sell</h3>
+              <button type="button" onClick={addItemToSelection} className={styles.addItemButton}>
+                + Add Item
+              </button>
             </div>
 
-            <div className={styles.inputGroup}>
-              <label htmlFor="sellingPrice">Selling Price per Unit ($)</label>
-              <input
-                type="number"
-                id="sellingPrice"
-                name="sellingPrice"
-                value={formData.sellingPrice}
-                onChange={handleInputChange}
-                step="0.01"
-                min="0"
-                required
-              />
-            </div>
+            {selectedItems.map((item) => (
+              <div key={item.id} className={styles.itemRow}>
+                <div className={styles.itemInputs}>
+                  <div className={styles.inputGroup}>
+                    <label>Select Item</label>
+                    <select
+                      value={item.itemName}
+                      onChange={(e) => updateSelectedItem(item.id, "itemName", e.target.value)}
+                      required
+                    >
+                      <option value="">-- Select Item --</option>
+                      {stockItems.map((stockItem) => {
+                        let dateStr = "";
+                        if (stockItem.addedDate && typeof stockItem.addedDate.toDate === "function") {
+                          dateStr = stockItem.addedDate.toDate().toLocaleDateString();
+                        } else if (stockItem.addedDate) {
+                          dateStr = new Date(stockItem.addedDate).toLocaleDateString();
+                        }
+                        return (
+                          <option key={stockItem.id} value={stockItem.itemName}>
+                            {stockItem.itemName} (Added: {dateStr || "N/A"}, Available: {stockItem.quantity})
+                          </option>
+                        );
+                      })}
+                    </select>
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>Quantity</label>
+                    <input
+                      type="number"
+                      value={item.quantity}
+                      onChange={(e) => updateSelectedItem(item.id, "quantity", e.target.value)}
+                      min="1"
+                      max={item.availableQuantity || 1}
+                      required
+                    />
+                    {item.availableQuantity > 0 && (
+                      <small className={styles.stockInfo}>
+                        Max: {item.availableQuantity} | Cost: ${item.costPrice.toFixed(2)} each
+                      </small>
+                    )}
+                  </div>
+
+                  <div className={styles.inputGroup}>
+                    <label>Selling Price per Unit ($)</label>
+                    <input
+                      type="number"
+                      value={item.sellingPrice}
+                      onChange={(e) => updateSelectedItem(item.id, "sellingPrice", e.target.value)}
+                      step="0.01"
+                      min="0"
+                      required
+                    />
+                  </div>
+
+                  <div className={styles.itemActions}>
+                    <button
+                      type="button"
+                      onClick={() => removeItemFromSelection(item.id)}
+                      className={styles.removeItemButton}
+                    >
+                      Remove
+                    </button>
+                  </div>
+                </div>
+
+                {item.quantity && item.sellingPrice && item.costPrice > 0 && (
+                  <div className={styles.itemSummary}>
+                    <small>
+                      Item Total: $
+                      {(Number.parseFloat(item.sellingPrice) * Number.parseInt(item.quantity || 0)).toFixed(2)} |
+                      Profit: $
+                      {(
+                        (Number.parseFloat(item.sellingPrice) - item.costPrice) *
+                        Number.parseInt(item.quantity || 0)
+                      ).toFixed(2)}
+                    </small>
+                  </div>
+                )}
+              </div>
+            ))}
           </div>
 
           {totalAmount > 0 && (
@@ -292,36 +409,11 @@ function Transactions() {
                     </small>
                   )}
                 </div>
-
-                <div className={styles.inputGroup}>
-                  <label htmlFor="transactionDate">Sale Date</label>
-                  <input
-                    type="date"
-                    id="transactionDate"
-                    name="transactionDate"
-                    value={formData.transactionDate}
-                    onChange={handleInputChange}
-                    required
-                  />
-                </div>
               </div>
             </div>
           )}
 
-          {selectedStock && formData.sellingPrice && formData.quantity && (
-            <div className={styles.profitInfo}>
-              <small>
-                Profit per unit: ${(Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice).toFixed(2)} |
-                Total profit: $
-                {(
-                  (Number.parseFloat(formData.sellingPrice) - selectedStock.costPrice) *
-                  Number.parseInt(formData.quantity || 0)
-                ).toFixed(2)}
-              </small>
-            </div>
-          )}
-
-          <button type="submit" disabled={loading || !selectedStock} className={styles.submitButton}>
+          <button type="submit" disabled={loading || selectedItems.length === 0} className={styles.submitButton}>
             {loading ? "Recording..." : "Record Sale"}
           </button>
         </form>
@@ -329,11 +421,11 @@ function Transactions() {
 
       <div className={styles.transactionsList}>
         <div className={styles.sectionHeader}>
-          <h2>Transactions</h2>
+          <h2>Recent Sales</h2>
           <div className={styles.searchContainer}>
             <input
               type="text"
-              placeholder="Search by customer email..."
+              placeholder="Search by customer name..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className={styles.searchInput}
@@ -349,42 +441,85 @@ function Transactions() {
           <div className={styles.transactionsGrid}>
             {filteredTransactions.map((transaction) => (
               <div key={transaction.id} className={styles.transactionCard}>
-                <h3>{transaction.itemName}</h3>
-                <div className={styles.customerInfo}>
-                  <p>
-                    <strong>Customer:</strong> {transaction.customerName}
-                  </p>
-                  <p>
-                    <strong>Email:</strong> {transaction.customerEmail || "N/A"}
-                  </p>
-                </div>
-                <div className={styles.transactionDetails}>
-                  <p>Quantity Sold: {transaction.quantity}</p>
-                  <p>Selling Price: ${transaction.sellingPrice.toFixed(2)} each</p>
-                  <p>
-                    <strong>
-                      Total Amount: $
-                      {transaction.totalAmount?.toFixed(2) ||
-                        (transaction.sellingPrice * transaction.quantity).toFixed(2)}
-                    </strong>
-                  </p>
-                  <p>
-                    Amount Paid: $
-                    {transaction.amountPaid?.toFixed(2) ||
-                      transaction.totalAmount?.toFixed(2) ||
-                      (transaction.sellingPrice * transaction.quantity).toFixed(2)}
-                  </p>
-                  {transaction.dueAmount > 0 && (
-                    <p className={styles.dueAmount}>Due: ${transaction.dueAmount.toFixed(2)}</p>
-                  )}
-                  <p className={transaction.profit >= 0 ? styles.profit : styles.loss}>
-                    Total Profit: ${transaction.profit.toFixed(2)}
-                  </p>
-                  <p>Sale Date: {transaction.transactionDate.toDate().toLocaleDateString()}</p>
-                  <p className={styles.paymentStatus}>
-                    Payment: {transaction.paymentStatus === "paid" ? "✅ Paid" : "⏳ Partial"}
-                  </p>
-                </div>
+                {transaction.items ? (
+                  <>
+                    <h3>Multi-Item Sale ({transaction.itemCount} items)</h3>
+                    <div className={styles.customerInfo}>
+                      <p>
+                        <strong>Customer:</strong> {transaction.customerName}
+                      </p>
+                      <p>
+                        <strong>Email:</strong> {transaction.customerEmail || "N/A"}
+                      </p>
+              
+                    </div>
+                    <div className={styles.itemsList}>
+                      {transaction.items.map((item, index) => (
+                        <div key={index} className={styles.transactionItem}>
+                          <p>
+                            <strong>{item.itemName}</strong>
+                          </p>
+                          <p>
+                            Quantity: {item.quantity} × ${item.sellingPrice.toFixed(2)} = ${item.itemTotal.toFixed(2)}
+                          </p>
+                        </div>
+                      ))}
+                    </div>
+                    <div className={styles.transactionDetails}>
+                      <p>
+                        <strong>Total Amount: ${transaction.totalAmount.toFixed(2)}</strong>
+                      </p>
+                      <p>Amount Paid: ${transaction.amountPaid.toFixed(2)}</p>
+                      {transaction.dueAmount > 0 && (
+                        <p className={styles.dueAmount}>Due: ${transaction.dueAmount.toFixed(2)}</p>
+                      )}
+                      <p className={transaction.totalProfit >= 0 ? styles.profit : styles.loss}>
+                        Total Profit: ${transaction.totalProfit.toFixed(2)}
+                      </p>
+                      <p>Sale Date: {transaction.transactionDate.toDate().toLocaleDateString()}</p>
+                      <p className={styles.paymentStatus}>
+                        Payment: {transaction.paymentStatus === "paid" ? "✅ Paid" : "⏳ Partial"}
+                      </p>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <h3>{transaction.itemName}</h3>
+                    <div className={styles.customerInfo}>
+                      <p>
+                        <strong>Customer:</strong> {transaction.customerName}
+                      </p>
+                    </div>
+                    <div className={styles.transactionDetails}>
+                      <p>Quantity Sold: {transaction.quantity}</p>
+                      <p>Selling Price: ${transaction.sellingPrice.toFixed(2)} each</p>
+                      <p>
+                        <strong>
+                          Total Amount: $
+                          {(transaction.totalAmount || transaction.sellingPrice * transaction.quantity).toFixed(2)}
+                        </strong>
+                      </p>
+                      <p>
+                        Amount Paid: $
+                        {(
+                          transaction.amountPaid ||
+                          transaction.totalAmount ||
+                          transaction.sellingPrice * transaction.quantity
+                        ).toFixed(2)}
+                      </p>
+                      {transaction.dueAmount > 0 && (
+                        <p className={styles.dueAmount}>Due: ${transaction.dueAmount.toFixed(2)}</p>
+                      )}
+                      <p className={transaction.profit >= 0 ? styles.profit : styles.loss}>
+                        Total Profit: ${transaction.profit.toFixed(2)}
+                      </p>
+                      <p>Sale Date: {transaction.transactionDate.toDate().toLocaleDateString()}</p>
+                      <p className={styles.paymentStatus}>
+                        Payment: {transaction.paymentStatus === "paid" ? "✅ Paid" : "⏳ Partial"}
+                      </p>
+                    </div>
+                  </>
+                )}
               </div>
             ))}
           </div>
